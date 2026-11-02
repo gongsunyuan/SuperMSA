@@ -804,6 +804,8 @@ calc_band_16(const ESL_DSQ *dsq, int L, const P7_OPROFILE *om, int q, __m512i be
 {
   CALC(RESET_16, STEP_BANDS_16, CONVERT_16, 16)
 }
+#endif /* MAX_BANDS > 14 */
+#if MAX_BANDS > 16
 
 __m512i
 calc_band_17(const ESL_DSQ *dsq, int L, const P7_OPROFILE *om, int q, __m512i beginv, register __m512i xEv)
@@ -816,7 +818,7 @@ calc_band_18(const ESL_DSQ *dsq, int L, const P7_OPROFILE *om, int q, __m512i be
 {
   CALC(RESET_18, STEP_BANDS_18, CONVERT_18, 18)
 }
-#endif /* MAX_BANDS > 14 */
+#endif /* MAX_BANDS > 16 */
 
 
 /*****************************************************************
@@ -845,7 +847,10 @@ get_xE(const ESL_DSQ *dsq, int L, const P7_OPROFILE *om)
        , calc_band_7,  calc_band_8,  calc_band_9,  calc_band_10, calc_band_11, calc_band_12, calc_band_13, calc_band_14
 #endif
 #if MAX_BANDS > 14
-       , calc_band_15, calc_band_16, calc_band_17, calc_band_18
+       , calc_band_15, calc_band_16
+#endif
+#if MAX_BANDS > 16
+       , calc_band_17, calc_band_18
 #endif
   };
 
