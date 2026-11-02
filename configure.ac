@@ -67,6 +67,7 @@ m4_include([easel/m4/ax_gcc_func_attribute.m4])
 m4_include([easel/m4/esl_neon.m4])
 m4_include([easel/m4/esl_sse.m4])
 m4_include([easel/m4/esl_vmx.m4])
+m4_include([easel/m4/esl_avx512.m4])
 
 m4_include([easel/m4/ax_prog_cc_mpi.m4])
 m4_include([easel/m4/ax_pthread.m4])
@@ -200,6 +201,7 @@ AC_ARG_ENABLE(fortify, [AS_HELP_STRING([--enable-fortify=x],[compile with -D_FOR
 AC_ARG_ENABLE(neon,    [AS_HELP_STRING([--enable-neon],    [enable our ARM Neon vector code])],          enable_neon=$enableval,    enable_neon=check)
 AC_ARG_ENABLE(sse,     [AS_HELP_STRING([--enable-sse],     [enable our SSE vector code])],               enable_sse=$enableval,     enable_sse=check)
 AC_ARG_ENABLE(vmx,     [AS_HELP_STRING([--enable-vmx],     [enable our Altivec/VMX vector code])],       enable_vmx=$enableval,     enable_vmx=check)
+AC_ARG_ENABLE(avx512,  [AS_HELP_STRING([--enable-avx512],  [enable our AVX-512 SSV vector code])],       enable_avx512=$enableval,  enable_avx512=no)
 
 AC_ARG_ENABLE(threads, [AS_HELP_STRING([--enable-threads], [enable POSIX threads parallelization])],     enable_threads=$enableval, enable_threads=check)
 AC_ARG_ENABLE(mpi,     [AS_HELP_STRING([--enable-mpi],     [enable MPI parallelization])],               enable_mpi=$enableval,     enable_mpi=no)
@@ -217,6 +219,7 @@ vecsel=0
 if test "$enable_neon"    = "yes"; then vecsel=$((vecsel+1)); fi
 if test "$enable_sse"     = "yes"; then vecsel=$((vecsel+1)); fi
 if test "$enable_vmx"     = "yes"; then vecsel=$((vecsel+1)); fi
+if test "$enable_avx512"  = "yes"; then vecsel=$((vecsel+1)); fi
 if test "$enable_neon"    = "yes"; then vecsel=             ; fi
 if   [[ $vecsel -gt 1 ]]; then
   AC_MSG_ERROR([Select only one implementation: sse, neon,  or vmx])
@@ -417,9 +420,25 @@ if test "$enable_neon" = "yes" || test "$enable_neon" = "check"; then
     enable_neon=no
     ])
 fi
+# AVX-512 SSV implementation: opt-in only (--enable-avx512); when selected,
+# it takes precedence over the SSE choice for the DP library.
+if test "$enable_avx512" = "yes"; then
+  ESL_AVX512([
+    AC_DEFINE(eslENABLE_AVX512, 1, [Enable AVX-512 SSV vector implementation])
+    AC_SUBST([HMMERIMPLLIB], ["impl_avx512/libhmmerimpl.a"])
+    AVX512_CFLAGS="$esl_avx512_cflags"
+    AC_SUBST(AVX512_CFLAGS)
+    impl_choice=avx512
+    ],[
+    AC_MSG_FAILURE([Unable to compile our AVX-512 implementations. Try another compiler or drop --enable-avx512.])
+    ])
+fi
+
 # If we didn't choose an implementation, die.
 case "$impl_choice" in
 neon) AC_MSG_NOTICE([Activating ARM Neon vector DP implementation])
+      ;;
+avx512) AC_MSG_NOTICE([Activating AVX-512 SSV vector DP implementation])
       ;;
 sse)  AC_MSG_NOTICE([Activating Intel/AMD SSE vector DP implementation])
       ;;
@@ -448,7 +467,7 @@ AC_SUBST(AVX512_CFLAGS)
 # For x86 processors check if the flush to zero macro is available
 # in order to avoid the performance penalty dealing with sub-normal
 # values in the floating point calculations.
-if test "$impl_choice" = "sse"; then
+if test "$impl_choice" = "sse" || test "$impl_choice" = "avx512"; then
   AC_MSG_CHECKING([whether _MM_SET_FLUSH_ZERO_MODE is supported])
   esl_save_cflags="$CFLAGS"
   CFLAGS="$CFLAGS $SSE_CFLAGS"

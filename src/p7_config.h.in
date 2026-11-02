@@ -116,6 +116,7 @@
 #undef eslENABLE_NEON
 #undef eslENABLE_SSE
 #undef eslENABLE_VMX
+#undef eslENABLE_AVX512
 
 /* System headers
  */
