@@ -863,7 +863,19 @@ get_xE(const ESL_DSQ *dsq, int L, const P7_OPROFILE *om)
     last_q = q;
   }
 
-  return _mm512_reduce_max_epu8(xEv);
+  /* horizontal max of the 64 unsigned bytes: fold four 128-bit lanes,
+   * then reuse easel's SSE reducer. (No _mm512_reduce_max_epu8 in this
+   * gcc's headers; once per sequence, so the cost is irrelevant.) */
+  {
+    __m128i lo  = _mm512_castsi512_si128(xEv);
+    __m128i hi1 = _mm512_extracti32x4_epi32(xEv, 1);
+    __m128i hi2 = _mm512_extracti32x4_epi32(xEv, 2);
+    __m128i hi3 = _mm512_extracti32x4_epi32(xEv, 3);
+    lo  = _mm_max_epu8(lo, hi1);
+    hi2 = _mm_max_epu8(hi2, hi3);
+    lo  = _mm_max_epu8(lo, hi2);
+    return esl_sse_hmax_epu8(lo);
+  }
 }
 
 
