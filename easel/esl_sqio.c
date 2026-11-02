@@ -178,6 +178,9 @@ sqfile_open(const char *filename, int format, const char *env, ESL_SQFILE **ret_
     /* check the local directory first */
     status = eslENOTFOUND;
 
+    if ((format == eslSQFILE_UNKNOWN || format == eslSQFILE_PMSA) && status == eslENOTFOUND)
+      status = esl_sqpmsa_Open(sqfp->filename, sqfp->format, sqfp);
+
     if (format == eslSQFILE_NCBI && status == eslENOTFOUND)
       status = esl_sqncbi_Open(sqfp->filename, sqfp->format, sqfp);
 
@@ -201,6 +204,9 @@ sqfile_open(const char *filename, int format, const char *env, ESL_SQFILE **ret_
 	strcpy(path+n+1, filename);
 	s1 = s2;
 
+
+	if ((format == eslSQFILE_UNKNOWN || format == eslSQFILE_PMSA) && status == eslENOTFOUND)
+	  status = esl_sqpmsa_Open(path, sqfp->format, sqfp);
 
 	if (format == eslSQFILE_NCBI && status == eslENOTFOUND)
 	  status = esl_sqncbi_Open(path, sqfp->format, sqfp);
@@ -718,6 +724,7 @@ esl_sqio_EncodeFormat(char *fmtstring)
   if (strcasecmp(fmtstring, "daemon")    == 0) return eslSQFILE_DAEMON;
   if (strcasecmp(fmtstring, "hmmpgmd")   == 0) return eslSQFILE_HMMPGMD;
   if (strcasecmp(fmtstring, "fmindex")   == 0) return eslSQFILE_FMINDEX;
+  if (strcasecmp(fmtstring, "pmsa")      == 0) return eslSQFILE_PMSA;
   return esl_msafile_EncodeFormat(fmtstring);
 }
 
@@ -744,6 +751,7 @@ esl_sqio_DecodeFormat(int fmt)
   case eslSQFILE_DAEMON:     return "daemon";
   case eslSQFILE_HMMPGMD:    return "hmmpgmd";
   case eslSQFILE_FMINDEX:    return "fmindex";
+  case eslSQFILE_PMSA:       return "pmsa";
   default:                   break;
   }
   esl_exception(eslEINVAL, FALSE, __FILE__, __LINE__,  "no such sqio format code %d", fmt);

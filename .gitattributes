@@ -1,0 +1,7 @@
+# 统一 LF：shell 脚本与 C 源码在 Linux 集群上构建运行，避免 Windows 工作区引入 CRLF
+*.sh     text eol=lf
+*.slurm  text eol=lf
+*.c      text eol=lf
+*.h      text eol=lf
+*.in     text eol=lf
+*.py     text eol=lf

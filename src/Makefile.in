@@ -48,12 +48,12 @@ MYINCDIRS = -I../${ESLDIR} \
 PROGS = jackhmmer
 
 # "auxprogs" are built but not installed.
-AUXPROGS =
+AUXPROGS = dbprep
 
 PROGOBJS =\
 	jackhmmer.o
 
-AUXPROGOBJS =
+AUXPROGOBJS = dbprep.o
 
 HDRS =  hmmer.h \
 	cachedb.h \

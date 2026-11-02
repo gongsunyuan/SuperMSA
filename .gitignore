@@ -43,6 +43,7 @@ src/hmmsim
 src/hmmstat
 src/itest_brute
 src/jackhmmer
+src/dbprep
 src/makehmmerdb
 src/nhmmer
 src/nhmmscan

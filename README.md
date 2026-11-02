@@ -71,6 +71,34 @@ squeue -u $USER                      # 查看状态：PD 排队 / R 运行
 
 每条目标序列都要过一遍 MSV → Viterbi → Forward 的级联，逐级淘汰。
 
+## 优化版本（第一梯队）
+
+在基线之上做了三项工程优化，不改变算法，搜索结果与原版一致：
+
+1. **多 query 并发**（`run_queries.sh`）：默认 **7 进程 × 8 线程 = 56 核**，
+   `xargs` 动态队列调度，跑完一条立即补下一条；`JOBS`/`CPU` 环境变量可调，
+   `NUMA=1` 时以 `numactl --interleave=all` 启动各进程。预热默认 1 次
+   （一次完整调用已含多轮全库扫描，足以灌满 page cache）。
+2. **数据库二进制化**（`src/dbprep.c` + `easel/esl_sqio_pmsa.c`）：`run_queries.sh`
+   自动把 `database.fasta` 转成 `database.bin`（自定义 PMSABIN1 格式：预数字化序列 +
+   尾部索引，mmap 只读映射，多进程共享 page cache），之后每轮全库扫描不再做
+   ASCII 解析。数字化由 easel 自己的读取器完成，与原路径逐字节一致。
+   转换仅在 `.bin` 缺失或过旧时执行，耗时追加到 `results/preprocess.tsv`
+   （**一次性预处理时间，正式报告中需公开**）。
+3. **优化编译**（`build_optimized.sh`）：`-O3 -march=cascadelake -funroll-loops -flto`，
+   针对计算节点的 Xeon Gold 6258R（Cascade Lake，支持 AVX-512）；LTO 链接失败时
+   设 `LTO=0` 重试。
+
+```bash
+ssh test01
+bash build_optimized.sh     # 编译 + 冒烟测试
+bash verify_bin.sh          # 验证二进制库与 FASTA 结果逐字节一致（tbl + sto）
+sbatch job_baseline.slurm   # 全量运行（7 进程 × 8 线程）
+```
+
+建议正式提交前：用正式库抽 10 条 query 跑子集，`score.py --baseline` 确认
+每条 ROC10 不低于基线的 90%，再全量计时。
+
 ## 注意事项
 
 - 优化不得改变搜索结果的正确性（评分以平均 ROC10 检验）。

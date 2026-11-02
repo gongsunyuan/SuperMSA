@@ -20,6 +20,7 @@
 #include "esl_sq.h"
 #include "esl_sqio_ascii.h"
 #include "esl_sqio_ncbi.h"
+#include "esl_sqio_pmsa.h"
 
 /*::cexcerpt::sq_sqio_data::begin::*/
 /* ESL_SQDATA:
@@ -28,6 +29,7 @@
 typedef union {
   ESL_SQASCII_DATA ascii;
   ESL_SQNCBI_DATA  ncbi;
+  ESL_SQPMSA_DATA  pmsa;
 } ESL_SQDATA;
 /*::cexcerpt::sq_sqio_data::end::*/
 
@@ -113,6 +115,7 @@ typedef struct esl_sqcache_s {
 #define eslSQFILE_DAEMON       7   // Farrar format, hmmpgmd queries: fasta + // terminator 
 #define eslSQFILE_HMMPGMD      8   // Farrar hmmpgmd database format: fasta + # header 
 #define eslSQFILE_FMINDEX      9   // Pressed FM-index format used in HMMER
+#define eslSQFILE_PMSA        10   // PMSABIN1: mmap'd pre-digitized protein db (SuperMSA)
 /*::cexcerpt::sq_sqio_format::end::*/
 
 
