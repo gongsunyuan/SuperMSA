@@ -425,6 +425,7 @@ fi
 if test "$enable_avx512" = "yes"; then
   ESL_AVX512([
     AC_DEFINE(eslENABLE_AVX512, 1, [Enable AVX-512 SSV vector implementation])
+    AC_DEFINE(eslENABLE_SSE, 1, [SSE instructions are a subset of the AVX-512 platform])
     AC_SUBST([HMMERIMPLLIB], ["impl_avx512/libhmmerimpl.a"])
     AVX512_CFLAGS="$esl_avx512_cflags"
     AC_SUBST(AVX512_CFLAGS)

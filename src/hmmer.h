@@ -824,6 +824,8 @@ typedef struct p7_hmm_window_list_s {
  *****************************************************************/
 #if   defined (eslENABLE_NEON)
 #include "impl_neon/impl_neon.h"
+#elif defined (eslENABLE_AVX512)
+#include "impl_avx512/impl_avx512.h"
 #elif defined (eslENABLE_SSE)
 #include "impl_sse/impl_sse.h"
 #elif defined (eslENABLE_VMX)
