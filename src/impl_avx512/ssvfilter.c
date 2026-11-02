@@ -511,7 +511,7 @@
   length_check(label)                                           \
   rsc = om->sbv[dsq[i]] + pos;                                   \
   step()                                                        \
-  sv = _mm512_alignr_epi8(sv, _mm512_mask_shuffle_i32x4(_mm512_setzero_si512(), 0xE, sv, sv, 0x90), 15);                                   \
+  sv = _mm512_alignr_epi8(sv, _mm512_mask_shuffle_i32x4(_mm512_setzero_si512(), 0xFFF0, sv, sv, 0x90), 15);                                   \
   sv = _mm512_or_si512(sv, beginv);                                \
   i++;
 

@@ -37,7 +37,7 @@ __m512i v1 = _mm512_set1_epi8((char) 3);
 __m512i v2 = _mm512_set1_epi8((char) 86);
 __m512i v3 = _mm512_subs_epi8(v1, v2);
 __m512i v4 = _mm512_max_epu8(v1, v3);
-__m512i v5 = _mm512_alignr_epi8(v4, _mm512_mask_shuffle_i32x4(_mm512_setzero_si512(), 0xE, v4, v4, 0x90), 15);
+__m512i v5 = _mm512_alignr_epi8(v4, _mm512_mask_shuffle_i32x4(_mm512_setzero_si512(), 0xFFF0, v4, v4, 0x90), 15);
 __m128i r = _mm_max_epu8(_mm512_castsi512_si128(v5), _mm512_extracti32x4_epi32(v5, 3));
 return (int) _mm_cvtsi128_si32(r);
 }
