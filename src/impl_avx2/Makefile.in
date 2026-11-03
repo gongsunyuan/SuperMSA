@@ -46,7 +46,7 @@ OBJS =  decoding.o\
 	p7_oprofile.o\
 	mpi.o
 
-HDRS =  impl_avx512.h
+HDRS =  impl_avx2.h
 
 UTESTS = @MPI_UTESTS@\
 	decoding_utest\
