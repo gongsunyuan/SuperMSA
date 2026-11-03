@@ -30,6 +30,8 @@ echo "编译参数: $CFLAGS (IMPL=$IMPL)"
 autoconf
 if [ "$IMPL" = avx512 ]; then
     ./configure CFLAGS="$CFLAGS" --enable-avx512
+elif [ "$IMPL" = avx2 ]; then
+    ./configure CFLAGS="$CFLAGS" --enable-avx2
 else
     ./configure CFLAGS="$CFLAGS"
 fi
