@@ -320,15 +320,15 @@
  * this is a recursively defined macro:
  *
  *   #define STEP_BANDS_1()
- *     STEP_SINGLE(sv00)
+ *     STEP_SINGLE_A(sv00)
  *
  *   #define STEP_BANDS_2()
  *     STEP_BANDS_1()
- *     STEP_SINGLE(sv01)
+ *     STEP_SINGLE_B(sv01)
  *
  *   #define STEP_BANDS_3()
  *     STEP_BANDS_2()
- *     STEP_SINGLE(sv02)
+ *     STEP_SINGLE_A(sv02)
  *
  * So we end up using STEP_SINGLE on each vector. This is where the
  * central calculation is done as described above:
@@ -428,9 +428,15 @@
 #endif
 
 
-#define STEP_SINGLE(sv)                         \
+/* Two independent max-accumulator chains: the max over all bands is
+ * associative and commutative, so splitting xEv into xEv0/xEv1 halves the
+ * serial max dependency chain without changing any scores. */
+#define STEP_SINGLE_A(sv)                       \
   sv   = _mm_subs_epi8(sv, *rsc); rsc++;        \
-  xEv  = _mm_max_epu8(xEv, sv);
+  xEv0 = _mm_max_epu8(xEv0, sv);
+#define STEP_SINGLE_B(sv)                       \
+  sv   = _mm_subs_epi8(sv, *rsc); rsc++;        \
+  xEv1 = _mm_max_epu8(xEv1, sv);
 
 
 #define LENGTH_CHECK(label)                     \
@@ -441,75 +447,75 @@
 
 
 #define STEP_BANDS_1()                          \
-  STEP_SINGLE(sv00)
+  STEP_SINGLE_A(sv00)
 
 #define STEP_BANDS_2()                          \
   STEP_BANDS_1()                                \
-  STEP_SINGLE(sv01)
+  STEP_SINGLE_B(sv01)
 
 #define STEP_BANDS_3()                          \
   STEP_BANDS_2()                                \
-  STEP_SINGLE(sv02)
+  STEP_SINGLE_A(sv02)
 
 #define STEP_BANDS_4()                          \
   STEP_BANDS_3()                                \
-  STEP_SINGLE(sv03)
+  STEP_SINGLE_B(sv03)
 
 #define STEP_BANDS_5()                          \
   STEP_BANDS_4()                                \
-  STEP_SINGLE(sv04)
+  STEP_SINGLE_A(sv04)
 
 #define STEP_BANDS_6()                          \
   STEP_BANDS_5()                                \
-  STEP_SINGLE(sv05)
+  STEP_SINGLE_B(sv05)
 
 #define STEP_BANDS_7()                          \
   STEP_BANDS_6()                                \
-  STEP_SINGLE(sv06)
+  STEP_SINGLE_A(sv06)
 
 #define STEP_BANDS_8()                          \
   STEP_BANDS_7()                                \
-  STEP_SINGLE(sv07)
+  STEP_SINGLE_B(sv07)
 
 #define STEP_BANDS_9()                          \
   STEP_BANDS_8()                                \
-  STEP_SINGLE(sv08)
+  STEP_SINGLE_A(sv08)
 
 #define STEP_BANDS_10()                         \
   STEP_BANDS_9()                                \
-  STEP_SINGLE(sv09)
+  STEP_SINGLE_B(sv09)
 
 #define STEP_BANDS_11()                         \
   STEP_BANDS_10()                               \
-  STEP_SINGLE(sv10)
+  STEP_SINGLE_A(sv10)
 
 #define STEP_BANDS_12()                         \
   STEP_BANDS_11()                               \
-  STEP_SINGLE(sv11)
+  STEP_SINGLE_B(sv11)
 
 #define STEP_BANDS_13()                         \
   STEP_BANDS_12()                               \
-  STEP_SINGLE(sv12)
+  STEP_SINGLE_A(sv12)
 
 #define STEP_BANDS_14()                         \
   STEP_BANDS_13()                               \
-  STEP_SINGLE(sv13)
+  STEP_SINGLE_B(sv13)
 
 #define STEP_BANDS_15()                         \
   STEP_BANDS_14()                               \
-  STEP_SINGLE(sv14)
+  STEP_SINGLE_A(sv14)
 
 #define STEP_BANDS_16()                         \
   STEP_BANDS_15()                               \
-  STEP_SINGLE(sv15)
+  STEP_SINGLE_B(sv15)
 
 #define STEP_BANDS_17()                         \
   STEP_BANDS_16()                               \
-  STEP_SINGLE(sv16)
+  STEP_SINGLE_A(sv16)
 
 #define STEP_BANDS_18()                         \
   STEP_BANDS_17()                               \
-  STEP_SINGLE(sv17)
+  STEP_SINGLE_B(sv17)
 
 
 #define CONVERT_STEP(step, length_check, label, sv, pos)        \
@@ -676,6 +682,8 @@
   dsq++;                                        \
                                                 \
   reset()                                       \
+  register __m128i xEv0 = xEv;                  \
+  register __m128i xEv1 = beginv;               \
                                                 \
   for (i = 0; i < L && i < Q - q - w; i++)      \
     {                                           \
@@ -709,7 +717,7 @@ done1:                                          \
  convert(step, LENGTH_CHECK, done2)             \
 done2:                                          \
                                                 \
- return xEv;
+ return _mm_max_epu8(xEv0, xEv1);
 
 
 __m128i
