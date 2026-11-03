@@ -83,7 +83,10 @@ pmsa_load(ESL_SQFILE *sqfp, ESL_SQ *sq, int with_seq)
   sq->W     = (with_seq ? (int64_t) len : 0);
   sq->idx   = (int64_t) p->next;
   sq->roff  = (off_t) rec_off;
-  sq->eoff  = (off_t)(rec_off + len + 2 + strlen(name) + strlen(acc) + strlen(desc) + 3 - 1);
+  /* eoff is only consumed by the MPI block planner, which this format
+   * does not support; skip the three strlen() calls its computation
+   * would otherwise need on every sequence. */
+  sq->eoff  = -1;
   sq->hoff  = sq->doff = -1;
 
   p->next++;

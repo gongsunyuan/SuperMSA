@@ -31,6 +31,41 @@
 static uint8_t unbiased_byteify(P7_OPROFILE *om, float sc);
 static uint8_t biased_byteify(P7_OPROFILE *om, float sc);
 static int16_t wordify(P7_OPROFILE *om, float sc);
+
+/* Length-dependent lookup tables.
+ *
+ * p7_oprofile_ReconfigLength() runs for every target sequence and used to
+ * cost two logf() calls per sequence. Its results depend only on L, because
+ * scale_b (3/log2) and scale_w (500/log2) are hardcoded constants and nj is
+ * 1 in multihit mode. Precompute both quantities once for L = 0..20000
+ * (the database maximum is 19836); values are computed with the very same
+ * formulas, so they are bit-identical to the on-the-fly results.
+ */
+#include <pthread.h>
+
+#define P7O_LEN_TAB_MAX 20000
+
+static uint8_t         p7o_tjb_tab[P7O_LEN_TAB_MAX + 1];
+static int16_t         p7o_xwm_tab[P7O_LEN_TAB_MAX + 1];
+static pthread_once_t  p7o_len_tab_once = PTHREAD_ONCE_INIT;
+
+static void
+p7o_len_tab_init(void)
+{
+  int          L;
+  const float  scale_b = 3.0   / eslCONST_LOG2;   /* as in mf_conversion() */
+  const float  scale_w = 500.0 / eslCONST_LOG2;   /* as in vf_conversion() */
+
+  for (L = 0; L <= P7O_LEN_TAB_MAX; L++)
+    {
+      float sc = -1.0f * roundf(scale_b * logf(3.0f / (float)(L+3)));
+      float scw;
+      p7o_tjb_tab[L] = (sc > 255.0f) ? 255 : (uint8_t) sc;
+
+      scw = roundf(scale_w * logf(3.0f / ((float)L + 3.0f)));   /* nj=1: (2+nj)/(L+2+nj) */
+      p7o_xwm_tab[L] = (scw >= 32767.0f) ? 32767 : (scw <= -32768.0f ? -32768 : (int16_t) scw);
+    }
+}
 static int     sf_conversion(P7_OPROFILE *om);
 
 /*****************************************************************
@@ -1094,7 +1129,13 @@ p7_oprofile_ReconfigLength(P7_OPROFILE *om, int L)
 int
 p7_oprofile_ReconfigMSVLength(P7_OPROFILE *om, int L)
 {
-  om->tjb_b = unbiased_byteify(om, logf(3.0f / (float) (L+3)));
+  if (L <= P7O_LEN_TAB_MAX)
+    {
+      pthread_once(&p7o_len_tab_once, p7o_len_tab_init);
+      om->tjb_b = p7o_tjb_tab[L];
+    }
+  else
+    om->tjb_b = unbiased_byteify(om, logf(3.0f / (float) (L+3)));
   return eslOK;
 }
 
@@ -1127,7 +1168,13 @@ p7_oprofile_ReconfigRestLength(P7_OPROFILE *om, int L)
   om->xf[p7O_N][p7O_MOVE] =  om->xf[p7O_C][p7O_MOVE] = om->xf[p7O_J][p7O_MOVE] = pmove;
 
   /* ViterbiFilter() parameters: lspace signed 16-bit ints */
-  om->xw[p7O_N][p7O_MOVE] =  om->xw[p7O_C][p7O_MOVE] = om->xw[p7O_J][p7O_MOVE] = wordify(om, logf(pmove));
+  if (om->nj == 1.0f && L <= P7O_LEN_TAB_MAX)
+    {
+      pthread_once(&p7o_len_tab_once, p7o_len_tab_init);
+      om->xw[p7O_N][p7O_MOVE] =  om->xw[p7O_C][p7O_MOVE] = om->xw[p7O_J][p7O_MOVE] = p7o_xwm_tab[L];
+    }
+  else
+    om->xw[p7O_N][p7O_MOVE] =  om->xw[p7O_C][p7O_MOVE] = om->xw[p7O_J][p7O_MOVE] = wordify(om, logf(pmove));
   /* om->xw[p7O_N][p7O_LOOP] =  om->xw[p7O_C][p7O_LOOP] = om->xw[p7O_J][p7O_LOOP] = wordify(om, logf(ploop)); */ /* 3nat approx in force: these stay 0 */
   /* om->ncj_roundoff        = (om->scale_w * logf(ploop)) - om->xw[p7O_N][p7O_LOOP];                         */ /* and this does too                  */
 
