@@ -56,5 +56,7 @@ typedef struct esl_sqpmsa_s {
 } ESL_SQPMSA_DATA;
 
 extern int esl_sqpmsa_Open(const char *seqfile, int format, struct esl_sqio_s *sqfp);
+extern int esl_sqpmsa_ReadLazy(struct esl_sqio_s *sqfp, ESL_SQ *sq);
+extern int esl_sqpmsa_ReadBlockLazy(struct esl_sqio_s *sqfp, ESL_SQ_BLOCK *sqBlock);
 
 #endif /*eslSQIO_PMSA_INCLUDED*/

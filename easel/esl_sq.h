@@ -127,6 +127,11 @@ typedef struct {
   off_t    doff;          /* data offset (start of sequence data); -1 if none  */
   off_t    eoff;          /* offset to last byte of record; -1 if unknown      */
 
+  /* Borrowed metadata views for mmap-backed block reads. */
+  const char *name_ref;
+  const char *acc_ref;
+  const char *desc_ref;
+
   /* Optional information for extra residue markups.
    * The number of them, and their tags are arbitrary
    */
@@ -168,6 +173,9 @@ extern void    esl_sq_Destroy  (ESL_SQ *sq);
 extern int     esl_sq_SetName        (ESL_SQ *sq, const char *name);
 extern int     esl_sq_SetAccession   (ESL_SQ *sq, const char *acc);
 extern int     esl_sq_SetDesc        (ESL_SQ *sq, const char *desc);
+extern const char *esl_sq_GetName       (const ESL_SQ *sq);
+extern const char *esl_sq_GetAccession  (const ESL_SQ *sq);
+extern const char *esl_sq_GetDesc       (const ESL_SQ *sq);
 extern int     esl_sq_SetSource      (ESL_SQ *sq, const char *source);
 extern int     esl_sq_FormatName     (ESL_SQ *sq, const char *name,   ...) ESL_ATTRIBUTE_FORMAT(printf, 2, 3);
 extern int     esl_sq_FormatAccession(ESL_SQ *sq, const char *acc,    ...) ESL_ATTRIBUTE_FORMAT(printf, 2, 3);

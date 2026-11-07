@@ -39,7 +39,7 @@ static const char *pmsa_GetError(const ESL_SQFILE *sqfp);
  * (memcpy's) the residues into <sq>.
  */
 static int
-pmsa_load(ESL_SQFILE *sqfp, ESL_SQ *sq, int with_seq)
+pmsa_load(ESL_SQFILE *sqfp, ESL_SQ *sq, int with_seq, int lazy_metadata)
 {
   ESL_SQPMSA_DATA *p   = &sqfp->data.pmsa;
   const uint8_t   *ient;
@@ -63,9 +63,19 @@ pmsa_load(ESL_SQFILE *sqfp, ESL_SQ *sq, int with_seq)
   acc  = name + strlen(name) + 1;
   desc = acc  + strlen(acc)  + 1;
 
-  if ((status = esl_sq_SetName(sq, name))      != eslOK) return status;
-  if ((status = esl_sq_SetAccession(sq, acc))  != eslOK) return status;
-  if ((status = esl_sq_SetDesc(sq, desc))      != eslOK) return status;
+  if (lazy_metadata)
+    {
+      sq->name_ref = name;
+      sq->acc_ref  = acc;
+      sq->desc_ref = desc;
+      sq->name[0] = sq->acc[0] = sq->desc[0] = '\0';
+    }
+  else
+    {
+      if ((status = esl_sq_SetName(sq, name))      != eslOK) return status;
+      if ((status = esl_sq_SetAccession(sq, acc))  != eslOK) return status;
+      if ((status = esl_sq_SetDesc(sq, desc))      != eslOK) return status;
+    }
 
   if (with_seq)
     {
@@ -96,13 +106,13 @@ pmsa_load(ESL_SQFILE *sqfp, ESL_SQ *sq, int with_seq)
 static int
 pmsa_Read(ESL_SQFILE *sqfp, ESL_SQ *sq)
 {
-  return pmsa_load(sqfp, sq, TRUE);
+  return pmsa_load(sqfp, sq, TRUE, FALSE);
 }
 
 static int
 pmsa_ReadInfo(ESL_SQFILE *sqfp, ESL_SQ *sq)
 {
-  return pmsa_load(sqfp, sq, FALSE);
+  return pmsa_load(sqfp, sq, FALSE, FALSE);
 }
 
 /* pmsa_ReadBlock():
@@ -111,7 +121,7 @@ pmsa_ReadInfo(ESL_SQFILE *sqfp, ESL_SQ *sq)
  * Long-target (windowed DNA) reading is not supported for this format.
  */
 static int
-pmsa_ReadBlock(ESL_SQFILE *sqfp, ESL_SQ_BLOCK *sqBlock, int max_residues, int max_sequences, int max_init_window, int long_target)
+pmsa_read_block(ESL_SQFILE *sqfp, ESL_SQ_BLOCK *sqBlock, int max_residues, int max_sequences, int max_init_window, int long_target, int lazy_metadata)
 {
   int i      = 0;
   int size   = 0;
@@ -125,7 +135,7 @@ pmsa_ReadBlock(ESL_SQFILE *sqfp, ESL_SQ_BLOCK *sqBlock, int max_residues, int ma
 
   for (i = 0; i < max_sequences && size < MAX_RESIDUE_COUNT; ++i)
     {
-      status = pmsa_Read(sqfp, sqBlock->list + i);
+      status = pmsa_load(sqfp, sqBlock->list + i, TRUE, lazy_metadata);
       if (status != eslOK) break;
       size += sqBlock->list[i].n;
       ++sqBlock->count;
@@ -136,6 +146,24 @@ pmsa_ReadBlock(ESL_SQFILE *sqfp, ESL_SQ_BLOCK *sqBlock, int max_residues, int ma
 
   sqBlock->complete = TRUE;
   return status;
+}
+
+static int
+pmsa_ReadBlock(ESL_SQFILE *sqfp, ESL_SQ_BLOCK *sqBlock, int max_residues, int max_sequences, int max_init_window, int long_target)
+{
+  return pmsa_read_block(sqfp, sqBlock, max_residues, max_sequences, max_init_window, long_target, FALSE);
+}
+
+int
+esl_sqpmsa_ReadBlockLazy(ESL_SQFILE *sqfp, ESL_SQ_BLOCK *sqBlock)
+{
+  return pmsa_read_block(sqfp, sqBlock, -1, -1, FALSE, FALSE, TRUE);
+}
+
+int
+esl_sqpmsa_ReadLazy(ESL_SQFILE *sqfp, ESL_SQ *sq)
+{
+  return pmsa_load(sqfp, sq, TRUE, TRUE);
 }
 
 static int

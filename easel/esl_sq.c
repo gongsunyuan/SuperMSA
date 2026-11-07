@@ -291,10 +291,10 @@ esl_sq_Copy(const ESL_SQ *src, ESL_SQ *dst)
     }
   }
   
-  if ((status = esl_sq_SetName     (dst, src->name))   != eslOK) goto ERROR;
-  if ((status = esl_sq_SetSource   (dst, src->source)) != eslOK) goto ERROR;
-  if ((status = esl_sq_SetAccession(dst, src->acc))    != eslOK) goto ERROR;
-  if ((status = esl_sq_SetDesc     (dst, src->desc))   != eslOK) goto ERROR;
+  if ((status = esl_sq_SetName     (dst, esl_sq_GetName(src)))       != eslOK) goto ERROR;
+  if ((status = esl_sq_SetSource   (dst, src->source))               != eslOK) goto ERROR;
+  if ((status = esl_sq_SetAccession(dst, esl_sq_GetAccession(src)))  != eslOK) goto ERROR;
+  if ((status = esl_sq_SetDesc     (dst, esl_sq_GetDesc(src)))       != eslOK) goto ERROR;
   if ((status = esl_sq_GrowTo      (dst, src->n))      != eslOK) goto ERROR;
 
   if (src->seq != NULL && dst->seq != NULL) /* text to text */
@@ -375,9 +375,9 @@ esl_sq_Compare(ESL_SQ *sq1, ESL_SQ *sq2)
   int   x;        /* index for optional extra residue markups */
 
   /* Annotation comparison */
-  if (strcmp(sq1->name,   sq2->name)   != 0) return eslFAIL;
-  if (strcmp(sq1->acc,    sq2->acc)    != 0) return eslFAIL;
-  if (strcmp(sq1->desc,   sq2->desc)   != 0) return eslFAIL;
+  if (strcmp(esl_sq_GetName(sq1),      esl_sq_GetName(sq2))      != 0) return eslFAIL;
+  if (strcmp(esl_sq_GetAccession(sq1), esl_sq_GetAccession(sq2)) != 0) return eslFAIL;
+  if (strcmp(esl_sq_GetDesc(sq1),      esl_sq_GetDesc(sq2))      != 0) return eslFAIL;
   if (strcmp(sq1->source, sq2->source) != 0) return eslFAIL;
   if (sq1->ss != NULL && sq2->ss != NULL) {
     if (strcmp(sq1->ss, sq2->ss) != 0)       return eslFAIL;
@@ -444,6 +444,9 @@ esl_sq_Reuse(ESL_SQ *sq)
 {
   int   x;        /* index for optional extra residue markups */
 
+  sq->name_ref = NULL;
+  sq->acc_ref  = NULL;
+  sq->desc_ref = NULL;
   sq->name[0]   = '\0';
   sq->acc[0]    = '\0';
   sq->desc[0]   = '\0';
@@ -1052,6 +1055,7 @@ esl_sq_SetName(ESL_SQ *sq, const char *name)
   void *tmp;
   int   status;
 
+  sq->name_ref = NULL;
   if (name == NULL) { sq->name[0] = '\0'; return eslOK; }
 
   n = strlen(name);
@@ -1090,6 +1094,7 @@ esl_sq_SetAccession(ESL_SQ *sq, const char *acc)
   void   *tmp;
   int     status;
 
+  sq->acc_ref = NULL;
   if (acc == NULL) { sq->acc[0] = '\0'; return eslOK; }
 
   n = strlen(acc);
@@ -1130,6 +1135,7 @@ esl_sq_SetDesc(ESL_SQ *sq, const char *desc)
   void   *tmp;
   int     status;
 
+  sq->desc_ref = NULL;
   if (desc == NULL) { sq->desc[0] = '\0'; return eslOK; }
 
   n = strlen(desc);
@@ -1143,6 +1149,24 @@ esl_sq_SetDesc(ESL_SQ *sq, const char *desc)
 
  ERROR:
   return status;
+}
+
+const char *
+esl_sq_GetName(const ESL_SQ *sq)
+{
+  return sq->name_ref ? sq->name_ref : sq->name;
+}
+
+const char *
+esl_sq_GetAccession(const ESL_SQ *sq)
+{
+  return sq->acc_ref ? sq->acc_ref : sq->acc;
+}
+
+const char *
+esl_sq_GetDesc(const ESL_SQ *sq)
+{
+  return sq->desc_ref ? sq->desc_ref : sq->desc;
 }
 
 /* Function:  esl_sq_SetSource()
@@ -2259,6 +2283,9 @@ sq_create_from(const char *name, const char *desc, const char *acc)
   sq->name   = NULL;
   sq->acc    = NULL;
   sq->desc   = NULL;
+  sq->name_ref = NULL;
+  sq->acc_ref  = NULL;
+  sq->desc_ref = NULL;
   sq->seq    = NULL;
   sq->dsq    = NULL;
   sq->ss     = NULL;

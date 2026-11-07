@@ -16,6 +16,7 @@
 #include "esl_scorematrix.h"
 #include "esl_sq.h"
 #include "esl_sqio.h"
+#include "esl_sqio_pmsa.h"
 #include "esl_stopwatch.h"
 
 #ifdef HMMER_MPI
@@ -1602,11 +1603,12 @@ serial_loop(WORKER_INFO *info, ESL_SQFILE *dbfp)
 {
   int      sstatus;
   ESL_SQ   *dbsq     = NULL;   /* one target sequence (digital)  */
+  int    (*read_seq)(ESL_SQFILE *, ESL_SQ *) = dbfp->format == eslSQFILE_PMSA ? esl_sqpmsa_ReadLazy : esl_sqio_Read;
 
   dbsq = esl_sq_CreateDigital(info->om->abc);
 
   /* Main loop: */
-  while ((sstatus = esl_sqio_Read(dbfp, dbsq)) == eslOK)
+  while ((sstatus = read_seq(dbfp, dbsq)) == eslOK)
     {
       p7_pli_NewSeq(info->pli, dbsq);
       p7_bg_SetLength(info->bg, dbsq->n);
@@ -1643,7 +1645,8 @@ thread_loop(ESL_THREADS *obj, ESL_WORK_QUEUE *queue, ESL_SQFILE *dbfp)
   while (sstatus == eslOK)
     {
       block = (ESL_SQ_BLOCK *) newBlock;
-      sstatus = esl_sqio_ReadBlock(dbfp, block, -1, -1, /*max_init_window=*/FALSE, FALSE);
+      sstatus = (dbfp->format == eslSQFILE_PMSA ? esl_sqpmsa_ReadBlockLazy(dbfp, block) :
+                 esl_sqio_ReadBlock(dbfp, block, -1, -1, /*max_init_window=*/FALSE, FALSE));
       if (sstatus == eslEOF)
 	{
 	  if (eofCount < esl_threads_GetWorkerCount(obj)) sstatus = eslOK;

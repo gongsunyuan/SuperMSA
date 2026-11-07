@@ -98,6 +98,9 @@ p7_alidisplay_Create(const P7_TRACE *tr, int which, const P7_OPROFILE *om, const
   int            k,x,i,s;
   int            hmm_namelen, hmm_acclen, hmm_desclen;
   int            sq_namelen,  sq_acclen,  sq_desclen;
+  const char    *sqname = esl_sq_GetName(sq);
+  const char    *sqacc  = esl_sq_GetAccession(sq);
+  const char    *sqdesc = esl_sq_GetDesc(sq);
   int            status;
   ESL_SQ         *ntorfseqtxt = NULL;
   
@@ -140,9 +143,9 @@ p7_alidisplay_Create(const P7_TRACE *tr, int which, const P7_OPROFILE *om, const
   hmm_acclen  = (om->acc  != NULL ? strlen(om->acc)  : 0);  n += hmm_acclen  + 1;
   hmm_desclen = (om->desc != NULL ? strlen(om->desc) : 0);  n += hmm_desclen + 1;
 
-  sq_namelen  = strlen(sq->name);                           n += sq_namelen  + 1;	  
-  sq_acclen   = strlen(sq->acc);                            n += sq_acclen   + 1; /* sq->acc is "\0" when unset */
-  sq_desclen  = strlen(sq->desc);                           n += sq_desclen  + 1; /* same for desc              */
+  sq_namelen  = strlen(sqname);                             n += sq_namelen  + 1;
+  sq_acclen   = strlen(sqacc);                              n += sq_acclen   + 1; /* sq->acc is "\0" when unset */
+  sq_desclen  = strlen(sqdesc);                             n += sq_desclen  + 1; /* same for desc              */
  
   ESL_ALLOC(ad, sizeof(P7_ALIDISPLAY));
   ad->mem = NULL;
@@ -170,9 +173,9 @@ p7_alidisplay_Create(const P7_TRACE *tr, int which, const P7_OPROFILE *om, const
   if (om->acc  != NULL) strcpy(ad->hmmacc,  om->acc);  else ad->hmmacc[0]  = 0;
   if (om->desc != NULL) strcpy(ad->hmmdesc, om->desc); else ad->hmmdesc[0] = 0;
 
-  strcpy(ad->sqname,  sq->name);
-  strcpy(ad->sqacc,   sq->acc);
-  strcpy(ad->sqdesc,  sq->desc);
+  strcpy(ad->sqname,  sqname);
+  strcpy(ad->sqacc,   sqacc);
+  strcpy(ad->sqdesc,  sqdesc);
 
   /* Determine hit coords */
   ad->hmmfrom = tr->k[z1];
