@@ -140,20 +140,30 @@ if [ "$ORDER" = longest ]; then
     [ ! -f "$HISTORY" ] || HISTORY_FILE=$HISTORY
     ORDERED=$(mktemp "$OUT/.ordered.XXXXXX")
     trap 'rm -f "$TODO" "$ORDERED"' EXIT
-    awk -v hist="$HISTORY_FILE" '
+    awk -v hist="$HISTORY_FILE" -v list="$TODO" '
         BEGIN {
             while (hist != "" && (getline line < hist) > 0) {
                 n = split(line, field, "\t")
                 if (n >= 2 && field[2] + 0 > 0) seconds[field[1]] = field[2] + 0
             }
+            while ((getline qf < list) > 0) {
+                id = ""; len = 0
+                while ((getline line < qf) > 0) {
+                    if (line ~ /^>/) {
+                        if (id == "") {
+                            id = substr(line, 2)
+                            sub(/[[:space:]].*$/, "", id)
+                        }
+                    } else {
+                        gsub(/[[:space:]]/, "", line)
+                        len += length(line)
+                    }
+                }
+                close(qf)
+                if (id != "") printf "%.3f\t%d\t%s\n", seconds[id] + 0, len, qf
+            }
         }
-        /^>/ {
-            if (id != "") printf "%.3f\t%d\t%s\n", seconds[id] + 0, len, id
-            id = substr($1, 2); len = 0; next
-        }
-        { gsub(/[[:space:]]/, ""); len += length($0) }
-        END { if (id != "") printf "%.3f\t%d\t%s\n", seconds[id] + 0, len, id }
-    ' "$TODO" | sort -t $'\t' -k1,1nr -k2,2nr -k3,3 | cut -f3 > "$ORDERED"
+    ' /dev/null | sort -t $'\t' -k1,1nr -k2,2nr -k3,3 | cut -f3 > "$ORDERED"
     mv "$ORDERED" "$TODO"
 fi
 
