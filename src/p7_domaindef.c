@@ -102,6 +102,7 @@ p7_domaindef_Create(ESL_RANDOMNESS *r)
   ddef->nclustered = 0;
   ddef->noverlaps  = 0;
   ddef->nenvelopes = 0;
+  ddef->inuse      = FALSE;
 
   /* default thresholds */
   ddef->rt1           = 0.25;
@@ -151,6 +152,7 @@ p7_domaindef_GrowTo(P7_DOMAINDEF *ddef, int L)
   void *p;
   int   status;
 
+  ddef->inuse = TRUE;
   if (L <= ddef->Lalloc) return eslOK;
 
   ESL_RALLOC(ddef->mocc, p, sizeof(float) * (L+1));
@@ -187,6 +189,8 @@ p7_domaindef_Reuse(P7_DOMAINDEF *ddef)
   int status;
   int d;
 
+  if (! ddef->inuse) return eslOK;
+
   /* If ddef->dcl is NULL, we turned the domain list over to a P7_HIT
    * for permanent storage, and we need to allocate a new one;
    * else, reuse the one we've got.
@@ -213,6 +217,7 @@ p7_domaindef_Reuse(P7_DOMAINDEF *ddef)
   p7_spensemble_Reuse(ddef->sp);
   p7_trace_Reuse(ddef->tr);	/* probable overkill; should already have been called */
   p7_trace_Reuse(ddef->gtr);	/* likewise */
+  ddef->inuse = FALSE;
   return eslOK;
 
  ERROR:

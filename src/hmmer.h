@@ -684,6 +684,8 @@ typedef struct p7_domaindef_s {
   int    noverlaps;	/* number of envelopes defined in ensemble clustering that overlap w/ prev envelope */
   int    nenvelopes;	/* number of envelopes handed over for domain definition, null2, alignment, and scoring. */
 
+  int    inuse;         /* whether the reusable workflow has been entered */
+
 } P7_DOMAINDEF;
 
 
