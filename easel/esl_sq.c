@@ -1234,6 +1234,7 @@ esl_sq_FormatName(ESL_SQ *sq, const char *name, ...)
   void *tmp;
   int   status;
 
+  sq->name_ref = NULL;
   if (name == NULL) { sq->name[0] = '\0'; return eslOK; }
 
   va_start(argp, name);
@@ -1276,6 +1277,7 @@ esl_sq_FormatAccession(ESL_SQ *sq, const char *acc, ...)
   void   *tmp;
   int     status;
 
+  sq->acc_ref = NULL;
   if (acc == NULL) { sq->acc[0] = '\0'; return eslOK; }
 
   va_start(argp, acc);
@@ -1319,6 +1321,7 @@ esl_sq_FormatDesc(ESL_SQ *sq, const char *desc, ...)
   void   *tmp;
   int     status;
 
+  sq->desc_ref = NULL;
   if (desc == NULL) { sq->desc[0] = '\0'; return eslOK; }
 
   va_start(argp, desc);
@@ -1404,11 +1407,14 @@ esl_sq_FormatSource(ESL_SQ *sq, const char *source, ...)
 int
 esl_sq_AppendDesc(ESL_SQ *sq, const char *desc)
 {
-  int   dlen   = (sq->desc == NULL ? 0 : strlen(sq->desc));
-  int   newlen = (desc     == NULL ? 0 : strlen(desc));
+  const char *old_desc = sq->desc_ref;
+  int   dlen;
+  int   newlen = (desc == NULL ? 0 : strlen(desc));
   int   status;
-  
+
   if (desc == NULL) return eslOK;
+  if (old_desc != NULL && (status = esl_sq_SetDesc(sq, old_desc)) != eslOK) return status;
+  dlen = (sq->desc == NULL ? 0 : strlen(sq->desc));
 
   // sq->desc == NULL check below is logically unnecessary but it silences zealous static analyzers
   if (sq->desc == NULL || dlen + newlen + 1 >= sq->dalloc) {    // +1 for appended space. 

@@ -598,6 +598,7 @@ search_thread(void *arg)
   /* set up the dummy description and accession fields */
   dbsq.desc = "";
   dbsq.acc  = "";
+  dbsq.name_ref = dbsq.acc_ref = dbsq.desc_ref = NULL;
 
   /* process a query sequence or hmm */
   if (info->seq != NULL) {

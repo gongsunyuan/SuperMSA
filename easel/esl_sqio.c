@@ -1209,6 +1209,7 @@ esl_sqfile_Cache(const ESL_ALPHABET *abc, const char *seqfile, int fmt, const ch
   esl_sqfile_Position(sqfp, 0);
   while ((status = esl_sqio_Read(sqfp, sq)) == eslOK) {
     c = cache->sq_list + n;
+    c->name_ref = c->acc_ref = c->desc_ref = NULL;
 
     /* if header fields have been defined, copy them to the cache */
     c->name = hdr_ptr;
@@ -1282,6 +1283,7 @@ esl_sqfile_Cache(const ESL_ALPHABET *abc, const char *seqfile, int fmt, const ch
   c->name     = hdr_ptr;
   c->acc      = hdr_ptr;
   c->desc     = hdr_ptr;
+  c->name_ref = c->acc_ref = c->desc_ref = NULL;
 
   c->tax_id   = -1;
   c->seq      = NULL;

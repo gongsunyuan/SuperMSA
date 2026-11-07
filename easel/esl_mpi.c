@@ -452,6 +452,7 @@ esl_sq_MPIUnpack(const ESL_ALPHABET *abc, char *buf, int n, int *pos, MPI_Comm c
   
   /* allocate sq */
   ESL_ALLOC(sq, sizeof(ESL_SQ));
+  sq->name_ref = sq->acc_ref = sq->desc_ref = NULL;
 
   /* unpack allocation values */
   status = MPI_Unpack(buf, n, pos, &(sq->nalloc),   1, MPI_INT,            comm); if (status != 0)     ESL_XEXCEPTION(eslESYS, "mpi unpack failed");
