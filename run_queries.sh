@@ -7,7 +7,7 @@
 #   timing.tsv      逐条耗时（仅供参考）   wall_time.tsv  正式计时：预热结束 → 最后一条跑完
 # 环境变量: JACKHMMER CPU(8) JOBS(56/CPU) ITERS(3) EVALUE(0.001) FILTERS WARMUP(1) FORCE(0，设 1 重跑已有结果)
 #          NUMA(0，设 1 内存交织) AFFINITY(0，设 socket 按双路绑定) NUMA_NODES(2)
-#          ORDER(longest，name 恢复文件名顺序) HISTORY(可选历史 timing.tsv，默认 results_sse/timing.tsv)
+#          ORDER(name，longest 可按历史耗时优先) HISTORY(可选历史 timing.tsv，默认 results_sse/timing.tsv)
 # 并发: 同时运行 JOBS 个 jackhmmer 进程（每个占 CPU 线程），动态队列，跑完一条立即补下一条。
 #       默认 7 进程 × 8 线程 = 56 核，与探索1000 单节点匹配。
 # 预热: 先对第一条 query 跑 WARMUP 次，把数据库读进 page cache，结果丢弃、不计时。
@@ -36,7 +36,7 @@ FORCE=${FORCE:-0}
 NUMA=${NUMA:-0}
 AFFINITY=${AFFINITY:-0}
 NUMA_NODES=${NUMA_NODES:-2}
-ORDER=${ORDER:-longest}
+ORDER=${ORDER:-name}
 HISTORY=${HISTORY:-$REPO/results_sse/timing.tsv}
 DB=$DATA/database.fasta
 TIMING=$OUT/timing.tsv
