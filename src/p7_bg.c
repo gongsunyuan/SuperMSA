@@ -13,6 +13,7 @@
 #include <p7_config.h>
 
 #include <string.h>
+#include <pthread.h>
 
 #include "easel.h"
 #include "esl_alphabet.h"
@@ -20,6 +21,23 @@
 #include "esl_vectorops.h"
 
 #include "hmmer.h"
+
+#define P7BG_LEN_TAB_MAX 20000
+
+static float          p7bg_null1_tab[P7BG_LEN_TAB_MAX + 1];
+static pthread_once_t p7bg_len_tab_once = PTHREAD_ONCE_INIT;
+
+static void
+p7bg_len_tab_init(void)
+{
+  int L;
+
+  for (L = 0; L <= P7BG_LEN_TAB_MAX; L++)
+    {
+      float p1 = (float) L / (float) (L+1);
+      p7bg_null1_tab[L] = (float) L * log(p1) + log(1.-p1);
+    }
+}
 
 
 /*****************************************************************
@@ -356,7 +374,13 @@ p7_bg_Write(FILE *fp, P7_BG *bg)
 int
 p7_bg_NullOne(const P7_BG *bg, const ESL_DSQ *dsq, int L, float *ret_sc)
 {
-  *ret_sc = (float) L * log(bg->p1) + log(1.-bg->p1);
+  if (L >= 0 && L <= P7BG_LEN_TAB_MAX && bg->p1 == (float) L / (float) (L+1))
+    {
+      pthread_once(&p7bg_len_tab_once, p7bg_len_tab_init);
+      *ret_sc = p7bg_null1_tab[L];
+    }
+  else
+    *ret_sc = (float) L * log(bg->p1) + log(1.-bg->p1);
   return eslOK;
 }
 
