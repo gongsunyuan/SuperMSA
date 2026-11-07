@@ -149,20 +149,18 @@ if [ "$ORDER" = longest ]; then
                 if (n >= 2 && field[2] + 0 > 0) seconds[field[1]] = field[2] + 0
             }
             while ((getline qf < list) > 0) {
-                id = ""; len = 0
+                sid = qf
+                sub(/^.*\//, "", sid)
+                sub(/\.fasta$/, "", sid)
+                len = 0
                 while ((getline line < qf) > 0) {
-                    if (line ~ /^>/) {
-                        if (id == "") {
-                            id = substr(line, 2)
-                            sub(/[[:space:]].*$/, "", id)
-                        }
-                    } else {
+                    if (line !~ /^>/) {
                         gsub(/[[:space:]]/, "", line)
                         len += length(line)
                     }
                 }
                 close(qf)
-                if (id != "") printf "%.3f\t%d\t%s\n", seconds[id] + 0, len, qf
+                printf "%.3f\t%d\t%s\n", seconds[sid] + 0, len, qf
             }
         }
     ' /dev/null | sort -t $'\t' -k1,1nr -k2,2nr -k3,3 | cut -f3 > "$ORDERED"
