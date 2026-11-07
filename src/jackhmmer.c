@@ -1610,7 +1610,7 @@ serial_loop(WORKER_INFO *info, ESL_SQFILE *dbfp)
     {
       p7_pli_NewSeq(info->pli, dbsq);
       p7_bg_SetLength(info->bg, dbsq->n);
-      p7_oprofile_ReconfigLength(info->om, dbsq->n);
+      p7_oprofile_ReconfigMSVLength(info->om, dbsq->n);
       
       p7_Pipeline(info->pli, info->om, info->bg, dbsq, NULL, info->th);
 
@@ -1704,7 +1704,7 @@ pipeline_thread(void *arg)
 
 	  p7_pli_NewSeq(info->pli, dbsq);
 	  p7_bg_SetLength(info->bg, dbsq->n);
-	  p7_oprofile_ReconfigLength(info->om, dbsq->n);
+	  p7_oprofile_ReconfigMSVLength(info->om, dbsq->n);
 
 	  p7_Pipeline(info->pli, info->om, info->bg, dbsq, NULL, info->th);
 

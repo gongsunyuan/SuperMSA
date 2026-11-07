@@ -1222,6 +1222,9 @@ typedef struct p7_pipeline_s {
   double  F1;		        /* MSV filter threshold                     */
   double  F2;		        /* Viterbi filter threshold                 */
   double  F3;		        /* uncorrected Forward filter threshold     */
+  int     msv_cutoff_valid;      /* cached inverse-survival cutoff is usable  */
+  double  msv_score_cutoff;     /* bit-score equivalent of the MSV F1 cutoff */
+  double  msv_score_epsilon;    /* exact P-value fallback around the cutoff  */
   int     B1;               /* window length for biased-composition modifier - MSV*/
   int     B2;               /* window length for biased-composition modifier - Viterbi*/
   int     B3;               /* window length for biased-composition modifier - Forward*/

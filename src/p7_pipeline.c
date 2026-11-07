@@ -10,7 +10,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h> 
+#include <string.h>
+#include <math.h>
 
 #include "easel.h"
 #include "esl_exponential.h"
@@ -210,6 +211,9 @@ p7_pipeline_Create(const ESL_GETOPTS *go, int M_hint, int L_hint, int long_targe
   pli->F1     = ((go && esl_opt_IsOn(go, "--F1")) ? ESL_MIN(1.0, esl_opt_GetReal(go, "--F1")) : 0.02);
   pli->F2     = (go ? ESL_MIN(1.0, esl_opt_GetReal(go, "--F2")) : 1e-3);
   pli->F3     = (go ? ESL_MIN(1.0, esl_opt_GetReal(go, "--F3")) : 1e-5);
+  pli->msv_cutoff_valid  = FALSE;
+  pli->msv_score_cutoff  = 0.0;
+  pli->msv_score_epsilon = 0.0;
   if (long_targets) {
 	  pli->B1     = (go ? esl_opt_GetInteger(go, "--B1") : 100);
 	  pli->B2     = (go ? esl_opt_GetInteger(go, "--B2") : 240);
@@ -504,6 +508,13 @@ p7_pli_NewModel(P7_PIPELINE *pli, const P7_OPROFILE *om, P7_BG *bg)
 
   pli->W = om->max_length;
 
+  if (pli->F1 > 0.0 && pli->F1 < 1.0)
+    {
+      pli->msv_score_cutoff  = esl_gumbel_invsurv(pli->F1, om->evparam[p7_MMU], om->evparam[p7_MLAMBDA]);
+      pli->msv_score_epsilon = 1e-5 + 1e-12 * fabs(pli->msv_score_cutoff);
+      pli->msv_cutoff_valid  = TRUE;
+    }
+
   return status;
 }
 
@@ -721,6 +732,7 @@ p7_Pipeline(P7_PIPELINE *pli, P7_OPROFILE *om, P7_BG *bg, const ESL_SQ *sq, cons
   /* First level filter: the MSV filter, multihit with <om> */
   p7_MSVFilter(sq->dsq, sq->n, om, pli->oxf, &usc);
   seq_score = (usc - nullsc) / eslCONST_LOG2;
+  if (pli->msv_cutoff_valid && seq_score < pli->msv_score_cutoff - pli->msv_score_epsilon) return eslOK;
   P = esl_gumbel_surv(seq_score,  om->evparam[p7_MMU],  om->evparam[p7_MLAMBDA]);
   if (P > pli->F1) return eslOK;
   pli->n_past_msv++;
@@ -743,6 +755,8 @@ p7_Pipeline(P7_PIPELINE *pli, P7_OPROFILE *om, P7_BG *bg, const ESL_SQ *sq, cons
       p7_oprofile_ReconfigRestLength(om, sq->n);
       if ((status = p7_pli_NewModelThresholds(pli, om)) != eslOK) return status; /* pli->errbuf has err msg set */
     }
+  else if (! pli->long_targets)
+    p7_oprofile_ReconfigRestLength(om, sq->n); /* jackhmmer configures only the MSV part before this filter */
 
   /* Second level filter: ViterbiFilter(), multihit with <om> */
   if (P > pli->F2)
