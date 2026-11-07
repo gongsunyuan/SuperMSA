@@ -5,7 +5,9 @@
 # 输出:
 #   tbl/<sid>.tbl   命中表（评分输入）     msa/<sid>.sto  多序列比对
 #   timing.tsv      逐条耗时（仅供参考）   wall_time.tsv  正式计时：预热结束 → 最后一条跑完
-# 环境变量: JACKHMMER CPU(8) JOBS(56/CPU) ITERS(3) EVALUE(0.001) FILTERS WARMUP(1) FORCE(0，设 1 重跑已有结果) NUMA(0)
+# 环境变量: JACKHMMER CPU(8) JOBS(56/CPU) ITERS(3) EVALUE(0.001) FILTERS WARMUP(1) FORCE(0，设 1 重跑已有结果)
+#          NUMA(0，设 1 内存交织) AFFINITY(0，设 socket 按双路绑定) NUMA_NODES(2)
+#          ORDER(longest，name 恢复文件名顺序) HISTORY(可选历史 timing.tsv，默认 results_sse/timing.tsv)
 # 并发: 同时运行 JOBS 个 jackhmmer 进程（每个占 CPU 线程），动态队列，跑完一条立即补下一条。
 #       默认 7 进程 × 8 线程 = 56 核，与探索1000 单节点匹配。
 # 预热: 先对第一条 query 跑 WARMUP 次，把数据库读进 page cache，结果丢弃、不计时。
@@ -32,12 +34,24 @@ FILTERS=${FILTERS:---noali --F1 0.0005 --F2 5e-05 --F3 5e-07}
 WARMUP=${WARMUP:-1}
 FORCE=${FORCE:-0}
 NUMA=${NUMA:-0}
+AFFINITY=${AFFINITY:-0}
+NUMA_NODES=${NUMA_NODES:-2}
+ORDER=${ORDER:-longest}
+HISTORY=${HISTORY:-$REPO/results_sse/timing.tsv}
 DB=$DATA/database.fasta
 TIMING=$OUT/timing.tsv
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 [ "$JOBS" -ge 1 ] || die "JOBS 必须 >= 1（当前 CPU=$CPU，请显式设 JOBS）"
+[ "$ORDER" = longest ] || [ "$ORDER" = name ] || die "ORDER 仅支持 longest 或 name"
+if [ "$AFFINITY" != 0 ]; then
+    [ "$AFFINITY" = socket ] || die "AFFINITY 仅支持 0 或 socket"
+    [ "$NUMA" = 0 ] || die "AFFINITY=socket 与 NUMA=1 不可同时使用"
+    [ "$NUMA_NODES" -ge 1 ] || die "NUMA_NODES 必须 >= 1"
+    command -v numactl >/dev/null || die "AFFINITY=socket 需要 numactl"
+    xargs --help 2>&1 | grep -q -- --process-slot-var || die "当前 xargs 不支持 --process-slot-var"
+fi
 if [ $((JOBS * CPU)) -gt 56 ]; then
     echo "WARNING: JOBS*CPU=$((JOBS * CPU)) 超过 56 核，将超订 CPU" >&2
 fi
@@ -70,7 +84,7 @@ if [ -x "$DBPREP" ]; then
 fi
 
 ARGS=(--cpu "$CPU" $FILTERS -N "$ITERS" -E "$EVALUE" -o /dev/null)
-export JACKHMMER DB OUT NUMA
+export JACKHMMER DB OUT NUMA AFFINITY NUMA_NODES
 export ARGS_STR="${ARGS[*]}"
 
 run_one() {
@@ -78,7 +92,11 @@ run_one() {
     local sid secs hits t0 t1
     sid=$(basename "$qf" .fasta)
     t0=$(date +%s.%N)
-    if [ "$NUMA" = 1 ]; then
+    if [ "$AFFINITY" = socket ]; then
+        node=$(( ${PMSA_SLOT:-0} % NUMA_NODES ))
+        numactl --cpunodebind="$node" --membind="$node" "$JACKHMMER" $ARGS_STR \
+            --tblout "$OUT/tbl/$sid.tbl" -A "$OUT/msa/$sid.sto" "$qf" "$DB"
+    elif [ "$NUMA" = 1 ]; then
         numactl --interleave=all "$JACKHMMER" $ARGS_STR \
             --tblout "$OUT/tbl/$sid.tbl" -A "$OUT/msa/$sid.sto" "$qf" "$DB"
     else
@@ -117,8 +135,31 @@ done
 ran=$((total - skipped))
 echo "共 $total 条 query：本次运行 $ran 条，跳过 $skipped 条；并发 $JOBS 进程 × $CPU 线程"
 
+if [ "$ORDER" = longest ]; then
+    HISTORY_FILE=
+    [ ! -f "$HISTORY" ] || HISTORY_FILE=$HISTORY
+    ORDERED=$(mktemp "$OUT/.ordered.XXXXXX")
+    trap 'rm -f "$TODO" "$ORDERED"' EXIT
+    awk -v hist="$HISTORY_FILE" '
+        BEGIN {
+            while (hist != "" && (getline line < hist) > 0) {
+                n = split(line, field, "\t")
+                if (n >= 2 && field[2] + 0 > 0) seconds[field[1]] = field[2] + 0
+            }
+        }
+        /^>/ {
+            if (id != "") printf "%.3f\t%d\t%s\n", seconds[id] + 0, len, id
+            id = substr($1, 2); len = 0; next
+        }
+        { gsub(/[[:space:]]/, ""); len += length($0) }
+        END { if (id != "") printf "%.3f\t%d\t%s\n", seconds[id] + 0, len, id }
+    ' "$TODO" | sort -t $'\t' -k1,1nr -k2,2nr -k3,3 | cut -f3 > "$ORDERED"
+    mv "$ORDERED" "$TODO"
+fi
+
+echo "队列顺序: $ORDER$([ "$ORDER" = longest ] && [ -n "${HISTORY_FILE:-}" ] && echo "（历史: $HISTORY_FILE）" || true)"
 t_all=$(date +%s.%N)
-if ! xargs -a "$TODO" -r -d '\n' -n 1 -P "$JOBS" bash -c 'run_one "$@"' _; then
+if ! xargs -a "$TODO" -r -d '\n' -n 1 -P "$JOBS" --process-slot-var=PMSA_SLOT bash -c 'run_one "$@"' _; then
     die "有 query 运行失败，请检查上方日志"
 fi
 wall=$(awk -v a="$t_all" -v b="$(date +%s.%N)" 'BEGIN{printf "%.1f", b-a}')
