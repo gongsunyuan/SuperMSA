@@ -45,14 +45,14 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 [ "$JOBS" -ge 1 ] || die "JOBS 必须 >= 1（当前 CPU=$CPU，请显式设 JOBS）"
 [ "$ORDER" = longest ] || [ "$ORDER" = name ] || die "ORDER 仅支持 longest 或 name"
-XARGS_SLOT=()
+XARGS_SLOT=
 if [ "$AFFINITY" != 0 ]; then
     [ "$AFFINITY" = socket ] || die "AFFINITY 仅支持 0 或 socket"
     [ "$NUMA" = 0 ] || die "AFFINITY=socket 与 NUMA=1 不可同时使用"
     [ "$NUMA_NODES" -ge 1 ] || die "NUMA_NODES 必须 >= 1"
     command -v numactl >/dev/null || die "AFFINITY=socket 需要 numactl"
     xargs --help 2>&1 | grep -q -- --process-slot-var || die "当前 xargs 不支持 --process-slot-var"
-    XARGS_SLOT=(--process-slot-var=PMSA_SLOT)
+    XARGS_SLOT=--process-slot-var=PMSA_SLOT
 fi
 if [ $((JOBS * CPU)) -gt 56 ]; then
     echo "WARNING: JOBS*CPU=$((JOBS * CPU)) 超过 56 核，将超订 CPU" >&2
@@ -171,7 +171,7 @@ fi
 
 echo "队列顺序: $ORDER$([ "$ORDER" = longest ] && [ -n "${HISTORY_FILE:-}" ] && echo "（历史: $HISTORY_FILE）" || true)"
 t_all=$(date +%s.%N)
-if ! xargs -a "$TODO" -r -d '\n' -n 1 -P "$JOBS" "${XARGS_SLOT[@]}" bash -c 'run_one "$@"' _; then
+if ! xargs -a "$TODO" -r -d '\n' -n 1 -P "$JOBS" $XARGS_SLOT bash -c 'run_one "$@"' _; then
     die "有 query 运行失败，请检查上方日志"
 fi
 wall=$(awk -v a="$t_all" -v b="$(date +%s.%N)" 'BEGIN{printf "%.1f", b-a}')
