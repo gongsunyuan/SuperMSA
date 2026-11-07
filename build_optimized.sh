@@ -3,7 +3,7 @@
 # 在测试节点(test01-04)上执行；针对探索1000计算节点的 Xeon Gold 6258R (Cascade Lake) 优化。
 # 显式用 -march=cascadelake 而非 native：编译节点与计算节点可能不同，显式指定避免指令集错配。
 #
-# 构建变体：IMPL=avx512（默认）启用 AVX-512 SSV 滤波器（需要 Xeon Gold 6258R 等
+# 构建变体：IMPL=sse（默认，当前全量最快）；IMPL=avx512 启用 AVX-512 SSV 滤波器（需要 Xeon Gold 6258R 等
 # Cascade Lake 或更新 CPU）；IMPL=sse 回退到原版 SSE 路径。
 # LTO 默认关闭：集群系统 ar/ranlib (binutils 2.27) 无法为 gcc12 的 slim LTO 对象
 # 建立静态库符号索引，会导致链接时满屏 undefined reference to esl_*。
@@ -17,7 +17,7 @@ cd "$REPO"
 module load compilers/gcc/v12.2.0 2>/dev/null || true
 
 LTO=${LTO:-0}
-IMPL=${IMPL:-avx512}
+IMPL=${IMPL:-sse}
 CFLAGS=${CFLAGS:--O3 -march=cascadelake -funroll-loops -fomit-frame-pointer}
 if [ "$LTO" = 1 ]; then
     CFLAGS="$CFLAGS -flto -ffat-lto-objects"
